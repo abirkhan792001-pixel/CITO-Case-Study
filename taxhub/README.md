@@ -72,6 +72,22 @@ panel in production — never in the repo.
 `GET /api/status` reports the live corpus size and doubles as the database liveness
 probe.
 
+## Verifying the grounding gate
+
+```bash
+pnpm verify:gate
+```
+
+Drives `searchByVector` against a real pgvector database with hand-built
+orthogonal vectors — no API key, no network, deterministic. It checks the gate in
+both directions: an unrelated vector returns nothing (which is what produces a
+refusal), an identical vector returns its chunk with provenance intact, and the
+fixture is cleaned up afterwards.
+
+Requires a reachable Postgres with pgvector. Note that some sandboxed
+environments block raw Postgres TCP egress (only proxied HTTPS is permitted), in
+which case point `DATABASE_URL` at a local Postgres to run this.
+
 ## Repo map
 
 ```

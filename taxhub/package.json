@@ -13,7 +13,8 @@
     "db:pull": "drizzle-kit introspect",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:check": "drizzle-kit check"
+    "db:check": "drizzle-kit check",
+    "verify:gate": "tsx scripts/verify-retrieval-gate.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.41",

@@ -192,3 +192,58 @@ for filtered ANN search that pgvector handles poorly.
 - **Corpus scope** — which mix of {statutes, BMF-Schreiben, synthetic wiki} buys
   the most recognisable value for the least ingest effort.
 - **Deployment target** — Vercel is the presumption given the stack, not yet decided.
+
+---
+
+## ADR-008 — `prepare: false` on every Postgres connection
+**Date:** 2026-08-23 · **Status:** Accepted
+
+**Context:** the Supabase connection string in use is the **shared pooler in
+transaction mode** (`aws-0-eu-central-1.pooler.supabase.com:6543`, IPv4-only).
+
+**Options considered**
+- **A.** Leave postgres.js defaults (prepared statements on).
+- **B.** Sniff the port and disable prepared statements only for `:6543`.
+- **C.** Pass `prepare: false` unconditionally. ← chosen
+
+**Choice:** C, in both `lib/db/index.ts` and `lib/db/migrate.ts`.
+
+**Why:** a prepared statement is bound to one backend connection, but
+transaction-mode pooling hands out a different backend per transaction. With
+prepared statements on, this produces intermittent `prepared statement does not
+exist` errors **under concurrency only** — the worst failure shape there is: it
+passes every local test and fails in production under load. Option B encodes the
+same guarantee as a string match on a URL, so a switch to the session pooler or a
+direct connection would silently change runtime behaviour. Unconditional is one
+behaviour everywhere; the cost is losing statement caching, which is not the
+bottleneck next to an embedding round-trip.
+
+**What would reverse it:** moving off pooled connections entirely (e.g. a direct
+connection from a long-lived server rather than serverless functions), where
+prepared statements would be both safe and worth having.
+
+---
+
+## ADR-009 — The grounding gate is verified without an embeddings API
+**Date:** 2026-08-23 · **Status:** Accepted
+
+**Context:** the refusal is the behaviour this product lives or dies on, and it is
+produced by one thing: `searchByVector` returning `[]` when nothing clears
+`SIMILARITY_THRESHOLD`. A test that needs a paid API key is a test that stops
+being run.
+
+**Choice:** `searchByVector(queryEmbedding)` is split out of
+`findRelevantContent(userQuery)`, so the vector search and its threshold can be
+driven with hand-built vectors. `scripts/verify-retrieval-gate.ts`
+(`pnpm verify:gate`) exercises both directions against a real pgvector database
+using orthogonal unit vectors — deterministic, no API key, no network.
+
+**Why:** it tests the gate **closed** (unrelated vector → 0 chunks → refusal) and
+**open** (identical vector → similarity 1.0 → chunk returned with its provenance
+intact). Mocking the database instead would have tested our idea of pgvector
+rather than pgvector, and the cosine-opclass/query-distance agreement that
+ADR-007 depends on is exactly the kind of thing a mock hides.
+
+**What would reverse it:** if retrieval moves to hybrid BM25 + reranking, the gate
+input stops being a single vector and this script needs rewriting around the
+reranker score rather than cosine similarity.

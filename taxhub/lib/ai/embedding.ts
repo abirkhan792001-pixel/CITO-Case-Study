@@ -57,16 +57,16 @@ export type RetrievedChunk = {
 };
 
 /**
- * Retrieve the passages that can support an answer.
+ * Vector search with the grounding threshold applied.
  *
- * Returns [] when nothing clears SIMILARITY_THRESHOLD. That empty array is the
- * refusal signal — the answer layer must NOT fall back to general knowledge.
+ * Split out from findRelevantContent so the threshold gate can be exercised
+ * against a real database WITHOUT calling an embeddings API — see
+ * scripts/verify-retrieval-gate.ts. The gate is the behaviour this product
+ * lives or dies on, so it must be testable in isolation.
  */
-export const findRelevantContent = async (
-  userQuery: string,
+export const searchByVector = async (
+  queryEmbedding: number[],
 ): Promise<RetrievedChunk[]> => {
-  const queryEmbedding = await generateEmbedding(userQuery);
-
   // Cosine similarity = 1 - cosine distance. Must match the HNSW opclass
   // (vector_cosine_ops) declared on the embeddings table.
   const similarity = sql<number>`1 - (${cosineDistance(
@@ -85,3 +85,13 @@ export const findRelevantContent = async (
     .orderBy((t) => desc(t.similarity))
     .limit(RETRIEVAL_TOP_K);
 };
+
+/**
+ * Retrieve the passages that can support an answer.
+ *
+ * Returns [] when nothing clears SIMILARITY_THRESHOLD. That empty array is the
+ * refusal signal — the answer layer must NOT fall back to general knowledge.
+ */
+export const findRelevantContent = async (
+  userQuery: string,
+): Promise<RetrievedChunk[]> => searchByVector(await generateEmbedding(userQuery));
