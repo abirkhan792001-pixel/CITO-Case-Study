@@ -35,3 +35,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local sparse checkout of the gesetze-im-internet mirror (not vendored)
+.gii-mirror/
+
+# Built corpus. Regenerable and deterministic given the pinned mirror commit,
+# and its retrieved_at churns daily, so it is a build artefact rather than source.
+# corpus/PROVENANCE.md (generated) and corpus/synthetic/ (source) ARE tracked.
+corpus/chunks/

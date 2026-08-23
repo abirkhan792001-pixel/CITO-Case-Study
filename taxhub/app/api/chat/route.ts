@@ -10,7 +10,7 @@ import {
   SYSTEM_PROMPT,
   buildContextBlock,
 } from "@/lib/ai/prompt";
-import { formatCitation } from "@/lib/db/schema/provenance";
+import { formatCitation, standDate } from "@/lib/db/schema/provenance";
 
 // The postgres driver needs the Node runtime — the Edge runtime cannot open a TCP socket.
 export const runtime = "nodejs";
@@ -71,7 +71,9 @@ export async function POST(req: Request) {
     title: chunk.provenance.title,
     url: chunk.provenance.source_url,
     sourceRepo: chunk.provenance.source_repo,
+    stand: standDate(chunk.provenance),
     retrievedAt: chunk.provenance.retrieved_at,
+    commitSha: chunk.provenance.commit_sha,
     licenceNote: chunk.provenance.licence_note,
     isSynthetic: chunk.provenance.is_synthetic,
     similarity: Number(chunk.similarity.toFixed(4)),

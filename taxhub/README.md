@@ -72,6 +72,30 @@ panel in production — never in the repo.
 `GET /api/status` reports the live corpus size and doubles as the database liveness
 probe.
 
+## The corpus
+
+```bash
+pnpm corpus:build          # statute XML + synthetic wiki -> corpus/chunks/corpus.json
+pnpm corpus:embed          # embed and store in pgvector (needs OPENAI_API_KEY)
+pnpm corpus:probe          # retrieval only, no generation - eyeball the citations
+```
+
+Build and embed are separate on purpose: parsing needs no API key and no network,
+so chunking decisions stay cheap to re-examine, and the chunk file is a reviewable
+artefact you can diff before anything reaches a database (ADR-011).
+
+`pnpm corpus:build` also regenerates `corpus/PROVENANCE.md`. Never edit that file
+by hand.
+
+**What is in it:** EStG, UStG and AO from official gesetze-im-internet.de XML via
+the [jandinter/gesetze-im-internet](https://github.com/jandinter/gesetze-im-internet)
+mirror, pinned to a commit SHA; plus 10 clearly-labelled simulated Kanzlei-Wiki
+documents. Statutes are gemeinfrei under § 5 UrhG.
+
+**Freshness:** the mirror stopped updating in April 2025, so the statute text
+carries `Stand:` dates from February 2025. The UI shows that date on every source.
+Re-ingest from live XML before any real use — see `corpus/PROVENANCE.md`.
+
 ## Verifying the grounding gate
 
 ```bash

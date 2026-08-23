@@ -1,4 +1,4 @@
-import { formatCitation } from "../db/schema/provenance";
+import { formatCitation, standDate } from "../db/schema/provenance";
 import type { RetrievedChunk } from "./embedding";
 
 /** Liability signal the profession expects. Appended to EVERY answer. */
@@ -46,7 +46,7 @@ export const buildContextBlock = (chunks: RetrievedChunk[]): string =>
       const synthetic = p.is_synthetic ? " — SIMULIERTER Kanzlei-Inhalt" : "";
       return [
         `[Quelle ${i + 1}] ${label} (${p.title}${synthetic})`,
-        `Stand: ${p.retrieved_at} | Fundstelle: ${p.source_url}`,
+        `Stand: ${standDate(p)} | Fundstelle: ${p.source_url}`,
         "",
         chunk.content,
       ].join("\n");

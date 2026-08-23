@@ -8,7 +8,9 @@ type Source = {
   title: string;
   url: string;
   sourceRepo: string;
+  stand: string;
   retrievedAt: string;
+  commitSha: string | null;
   licenceNote: string;
   isSynthetic: boolean;
   similarity: number;
@@ -212,7 +214,7 @@ export default function Home() {
                       </div>
                       <p className="mt-1 text-slate-600">{s.title}</p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Stand: {s.retrievedAt} · Relevanz:{" "}
+                        Stand: {s.stand} · Relevanz:{" "}
                         {s.similarity.toFixed(3)} · {s.licenceNote}
                       </p>
                       <a

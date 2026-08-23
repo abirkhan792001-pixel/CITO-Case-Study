@@ -247,3 +247,86 @@ ADR-007 depends on is exactly the kind of thing a mock hides.
 **What would reverse it:** if retrieval moves to hybrid BM25 + reranking, the gate
 input stops being a single vector and this script needs rewriting around the
 reranker score rather than cosine similarity.
+
+---
+
+## ADR-010 — Corpus scope: three statutes, section-aware chunks, synthetic wiki about process
+**Date:** 2026-08-23 · **Status:** Accepted
+
+**Options considered for scope**
+- **A.** Ingest broadly from the mirror (dozens of tax-adjacent laws).
+- **B.** EStG + UStG + AO only, plus a synthetic Kanzlei-Wiki. ← chosen
+- **C.** B plus GewStG and KStG.
+
+**Choice:** B. 2,283 statute chunks + 57 wiki chunks.
+
+**Why:** every additional statute widens what must be verified before anyone can
+trust a citation, and buys nothing for a demo that is graded on groundedness
+rather than breadth. These three cover the questions a Kanzlei actually fields
+daily: deductions (EStG), VAT and Kleinunternehmer (UStG), retention and procedure
+(AO). GewStG and KStG were present in the mirror and deliberately skipped; adding
+them later is one line in `STATUTES`.
+
+**Chunking:** one chunk per section, split per Absatz only when the section
+exceeds 1,800 characters and has more than one Absatz. The section heading is
+repeated on every chunk so a retrieved fragment always announces which § it came
+from, even out of context. Fixed-size chunking was rejected outright: a chunk that
+straddles a § boundary cannot be cited honestly, which is the whole product.
+
+**Synthetic wiki content:** the ten documents describe firm **process** —
+onboarding, Fristen, Belegablage, Honorar, Betriebsprüfung — and point at statutes
+rather than restating thresholds. This is deliberate. A synthetic document that
+asserted a plausible-but-wrong legal threshold would be indistinguishable from a
+hallucination to a reader, and would undermine the exact claim the corpus exists
+to support.
+
+**What would reverse it:** a demo question a Kanzlei owner actually asks that none
+of the three statutes can answer. Then add the statute that covers it — one entry,
+one rebuild — rather than broadening pre-emptively.
+
+---
+
+## ADR-011 — Build and embed are separate commands
+**Date:** 2026-08-23 · **Status:** Accepted
+
+**Options considered**
+- **A.** One `ingest` command: parse, chunk, embed and store in a single pass.
+- **B.** `corpus:build` (parse + chunk -> JSON) then `corpus:embed` (JSON -> DB). ← chosen
+
+**Choice:** B.
+
+**Why:** parsing needs no API key and no network, embedding needs both. Fusing
+them means every re-examination of a chunking decision costs an embedding bill and
+an internet connection, so in practice it stops happening. Split, the chunk file
+is a reviewable artefact that can be diffed before anything reaches a database —
+and a corpus can be fully built and inspected in an environment where embedding is
+impossible, which is exactly the situation this phase ran in.
+
+It also makes failure honest: `corpus:embed` refuses to start on a placeholder key
+rather than dying at chunk 900 and leaving a half-populated knowledge base that
+still answers questions, badly.
+
+**What would reverse it:** nothing foreseeable. The coupling only ever saves one
+command.
+
+---
+
+## ADR-012 — `parseTagValue: false` on the statute XML parser
+**Date:** 2026-08-23 · **Status:** Accepted
+
+**Context:** fast-xml-parser coerces numeric-looking text nodes by default. The
+statute list marker `<DT>1.</DT>` was parsed as the number `1`, silently dropping
+the period, so "Werbungskosten sind auch 1. Schuldzinsen" ingested as
+"…auch 1 Schuldzinsen".
+
+**Choice:** `parseTagValue: false` and `parseAttributeValue: false` — every text
+node stays a string, verbatim.
+
+**Why:** statute numbering is load-bearing for citation; text that references
+"Nummer 1" must match a list marker that still reads "1.". This is the dangerous
+class of bug for this project: it produced plausible German that a reviewer skims
+past, corrupting the very text we promise is reproduced faithfully. Found by
+spot-checking a rendered chunk against the raw XML, which is now a standing step.
+
+**What would reverse it:** nothing. There is no case where reinterpreting statute
+text as a number is correct.
