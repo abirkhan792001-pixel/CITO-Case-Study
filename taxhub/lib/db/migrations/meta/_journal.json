@@ -8,6 +8,13 @@
       "when": 1787507813912,
       "tag": "0000_fine_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787512450151,
+      "tag": "0001_amazing_solo",
+      "breakpoints": true
     }
   ]
 }

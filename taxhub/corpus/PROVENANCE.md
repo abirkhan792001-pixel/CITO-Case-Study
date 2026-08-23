@@ -7,7 +7,7 @@ it is pinned to, and under what terms.
 
 - Mirror commit: `3982ae477524f3c75ed353a460d99a518dd5a62a`
 - Documents: 13 (3 amtlich, 10 simuliert)
-- Chunks: 2340
+- Chunks: 2717
 
 ## Freshness warning — read this before trusting a citation
 
@@ -36,9 +36,9 @@ real firm's material.
 
 | # | Titel | Abk. | Umfang | Chunks | source_repo | URL | commit_sha | retrieved_at | Stand | Lizenz | Modus | Synthetisch |
 |---|-------|------|--------|--------|-------------|-----|------------|--------------|-------|--------|-------|-------------|
-| 1 | Einkommensteuergesetz (EStG) | EStG | 222 Paragraphen | 904 | jandinter/gesetze-im-internet | [Link](https://www.gesetze-im-internet.de/estg/) | `3982ae477524` | 2026-08-23 | 2025-02-07 | § 5 UrhG – amtliches Werk, gemeinfrei | full-text | nein |
-| 2 | Umsatzsteuergesetz (UStG) | UStG | 82 Paragraphen | 413 | jandinter/gesetze-im-internet | [Link](https://www.gesetze-im-internet.de/ustg_1980/) | `3982ae477524` | 2026-08-23 | 2025-02-26 | § 5 UrhG – amtliches Werk, gemeinfrei | full-text | nein |
-| 3 | Abgabenordnung (AO) | AO | 485 Paragraphen | 966 | jandinter/gesetze-im-internet | [Link](https://www.gesetze-im-internet.de/ao_1977/) | `3982ae477524` | 2026-08-23 | 2025-02-11 | § 5 UrhG – amtliches Werk, gemeinfrei | full-text | nein |
+| 1 | Einkommensteuergesetz (EStG) | EStG | 222 Paragraphen | 1186 | jandinter/gesetze-im-internet | [Link](https://www.gesetze-im-internet.de/estg/) | `3982ae477524` | 2026-08-23 | 2025-02-07 | § 5 UrhG – amtliches Werk, gemeinfrei | full-text | nein |
+| 2 | Umsatzsteuergesetz (UStG) | UStG | 82 Paragraphen | 473 | jandinter/gesetze-im-internet | [Link](https://www.gesetze-im-internet.de/ustg_1980/) | `3982ae477524` | 2026-08-23 | 2025-02-26 | § 5 UrhG – amtliches Werk, gemeinfrei | full-text | nein |
+| 3 | Abgabenordnung (AO) | AO | 485 Paragraphen | 1001 | jandinter/gesetze-im-internet | [Link](https://www.gesetze-im-internet.de/ao_1977/) | `3982ae477524` | 2026-08-23 | 2025-02-11 | § 5 UrhG – amtliches Werk, gemeinfrei | full-text | nein |
 | 4 | Mandanten-Onboarding — Checkliste | — | 7 Abschnitte | 7 | synthetic | [Link](corpus/synthetic/01-mandanten-onboarding-checkliste.md) | — | 2026-08-23 | 2026-08-23 | Synthetisch erzeugter Demo-Inhalt, kein Fremdmaterial - frei verwendbar | full-text | **JA** |
 | 5 | Häufige Mandantenfragen — interne Antworthilfe | — | 6 Abschnitte | 6 | synthetic | [Link](corpus/synthetic/02-haeufige-mandantenfragen.md) | — | 2026-08-23 | 2026-08-23 | Synthetisch erzeugter Demo-Inhalt, kein Fremdmaterial - frei verwendbar | full-text | **JA** |
 | 6 | Interne Notiz — Fristenmanagement | — | 7 Abschnitte | 7 | synthetic | [Link](corpus/synthetic/03-interne-notiz-fristen.md) | — | 2026-08-23 | 2026-08-23 | Synthetisch erzeugter Demo-Inhalt, kein Fremdmaterial - frei verwendbar | full-text | **JA** |

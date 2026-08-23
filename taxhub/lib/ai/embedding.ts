@@ -3,13 +3,17 @@ import { cosineDistance, desc, gt, sql } from "drizzle-orm";
 
 import { db } from "../db";
 import { embeddings } from "../db/schema/embeddings";
-import { type Provenance } from "../db/schema/provenance";
+import { searchByKeywords } from "./keyword";
+import type { RetrievedChunk } from "./retrieval-types";
 import {
   EMBEDDING_PROVIDER_OPTIONS,
+  RETRIEVAL_MODE,
   RETRIEVAL_TOP_K,
   SIMILARITY_THRESHOLD,
   embeddingModel,
 } from "./config";
+
+export type { RetrievedChunk };
 
 /**
  * Split a document into retrievable chunks.
@@ -50,12 +54,6 @@ export const generateEmbedding = async (value: string): Promise<number[]> => {
   return embedding;
 };
 
-export type RetrievedChunk = {
-  content: string;
-  similarity: number;
-  provenance: Provenance;
-};
-
 /**
  * Vector search with the grounding threshold applied.
  *
@@ -94,4 +92,7 @@ export const searchByVector = async (
  */
 export const findRelevantContent = async (
   userQuery: string,
-): Promise<RetrievedChunk[]> => searchByVector(await generateEmbedding(userQuery));
+): Promise<RetrievedChunk[]> =>
+  RETRIEVAL_MODE === "vector"
+    ? searchByVector(await generateEmbedding(userQuery))
+    : searchByKeywords(userQuery);

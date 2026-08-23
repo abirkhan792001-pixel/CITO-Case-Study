@@ -1,5 +1,5 @@
 import { formatCitation, standDate } from "../db/schema/provenance";
-import type { RetrievedChunk } from "./embedding";
+import type { RetrievedChunk } from "./retrieval-types";
 
 /** Liability signal the profession expects. Appended to EVERY answer. */
 export const DISCLAIMER =

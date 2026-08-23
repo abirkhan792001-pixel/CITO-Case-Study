@@ -1,8 +1,14 @@
 /**
  * Embed the built corpus and store it in Postgres/pgvector.
  *
- *   pnpm corpus:embed            # refuses if the knowledge base is not empty
- *   pnpm corpus:embed --replace  # wipes the knowledge base first
+ *   pnpm corpus:embed                  # refuses if the knowledge base is not empty
+ *   pnpm corpus:embed --replace        # wipes the knowledge base first
+ *   pnpm corpus:embed --no-embeddings  # store chunks WITHOUT vectors (keyword mode)
+ *
+ * --no-embeddings exists because this deployment has no embeddings API key
+ * (ADR-013). Chunks are stored with a NULL vector and retrieved by German
+ * full-text search. Storing a fabricated vector instead would be far worse: it
+ * would look like semantic retrieval while ranking at random.
  *
  * Reads corpus/chunks/corpus.json (produced by `pnpm corpus:build`). Every
  * chunk's provenance is re-validated against the schema here, at the last moment
@@ -49,9 +55,10 @@ const assertUsableKey = () => {
 };
 
 const main = async () => {
-  assertUsableKey();
-
   const replace = process.argv.includes("--replace");
+  const noEmbeddings = process.argv.includes("--no-embeddings");
+
+  if (!noEmbeddings) assertUsableKey();
 
   let payload: { commitSha: string; documents: DocumentRecord[] };
   try {
@@ -112,17 +119,22 @@ const main = async () => {
 
     for (let i = 0; i < doc.chunks.length; i += BATCH_SIZE) {
       const batch = doc.chunks.slice(i, i + BATCH_SIZE);
-      const { embeddings: vectors } = await embedMany({
-        model: embeddingModel,
-        values: batch.map((c) => c.content),
-        providerOptions: EMBEDDING_PROVIDER_OPTIONS,
-      });
+
+      const vectors = noEmbeddings
+        ? null
+        : (
+            await embedMany({
+              model: embeddingModel,
+              values: batch.map((c) => c.content),
+              providerOptions: EMBEDDING_PROVIDER_OPTIONS,
+            })
+          ).embeddings;
 
       await db.insert(embeddingsTable).values(
         batch.map((chunk, j) => ({
           resourceId: resource.id,
           content: chunk.content,
-          embedding: vectors[j],
+          embedding: vectors ? vectors[j] : null,
           provenance: chunk.provenance,
         })),
       );
@@ -146,8 +158,17 @@ const main = async () => {
 
   console.log(
     `\n  stored ${finalChunks} chunks across ${finalDocs} documents ` +
-      `(mirror @ ${payload.commitSha.slice(0, 12)})\n`,
+      `(mirror @ ${payload.commitSha.slice(0, 12)})`,
   );
+  if (noEmbeddings) {
+    console.log(
+      "  NOTE: stored WITHOUT vectors. Retrieval runs in keyword mode.\n" +
+        "        Re-run without --no-embeddings once an embeddings key exists,\n" +
+        "        then set RETRIEVAL_MODE=vector.\n",
+    );
+  } else {
+    console.log("");
+  }
   process.exit(0);
 };
 

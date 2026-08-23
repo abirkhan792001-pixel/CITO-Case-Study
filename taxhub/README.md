@@ -96,6 +96,24 @@ documents. Statutes are gemeinfrei under § 5 UrhG.
 carries `Stand:` dates from February 2025. The UI shows that date on every source.
 Re-ingest from live XML before any real use — see `corpus/PROVENANCE.md`.
 
+## Retrieval mode
+
+Semantic retrieval over embeddings is the intended design, but it needs an
+embeddings API key. Where none is available, the app runs **keyword mode**:
+Postgres German full-text search, with document-frequency filtering and IDF
+weighting layered on top (Postgres text search has neither).
+
+```bash
+RETRIEVAL_MODE=keyword   # default - German full-text search, no key needed
+RETRIEVAL_MODE=vector    # semantic search, after `pnpm corpus:embed`
+```
+
+The refusal contract is identical in both modes: nothing above the threshold
+means the model is never called. Measured on the seed set, keyword mode gets 4 of
+5 questions right and correctly refuses the out-of-corpus one. The known miss is
+documented in `ASSUMPTIONS.md` A13 — it is a vocabulary mismatch ("befreit" vs
+"steuerfrei") that lexical matching cannot bridge and embeddings would.
+
 ## Verifying the grounding gate
 
 ```bash

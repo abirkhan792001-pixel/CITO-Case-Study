@@ -86,3 +86,45 @@ export const SIMILARITY_THRESHOLD = 0.35;
 
 /** How many chunks to retrieve per question. */
 export const RETRIEVAL_TOP_K = 6;
+
+/* -------------------------------------------------------------------------- */
+/*  RETRIEVAL MODE                                                            */
+/* -------------------------------------------------------------------------- */
+
+export type RetrievalMode = "keyword" | "vector";
+
+/**
+ * Which retrieval path is live.
+ *
+ * "vector"  - semantic search over embeddings. The intended design (ADR-003).
+ * "keyword" - German full-text search. In use because no embeddings API key is
+ *             available in this deployment (ADR-013).
+ *
+ * Defaults to "keyword" because that is what actually works right now; setting
+ * it to "vector" against an unembedded corpus would retrieve nothing and the
+ * assistant would refuse every question. Override with RETRIEVAL_MODE=vector
+ * once `pnpm corpus:embed` has run.
+ */
+export const RETRIEVAL_MODE: RetrievalMode =
+  process.env.RETRIEVAL_MODE === "vector" ? "vector" : "keyword";
+
+/**
+ * Rank floor for keyword retrieval. NOT comparable to SIMILARITY_THRESHOLD -
+ * this is an IDF-weighted ts_rank_cd sum, not a cosine similarity.
+ *
+ * Calibrated on measured scores from the seed set, not chosen by feel:
+ *   in-corpus answers   0.41 - 0.78
+ *   out-of-corpus best  0.38   ("Mindestlohn", matching only via "deutschland")
+ * 0.4 sits in that gap. The margin is THIN (~6%), which is an honest limitation
+ * of lexical scoring rather than a tuning failure - see ASSUMPTIONS.md A12.
+ */
+export const KEYWORD_THRESHOLD = 0.4;
+
+/**
+ * A query term appearing in more than this fraction of chunks is discarded as
+ * non-discriminating. Postgres text search has no IDF of its own, so without
+ * this a question's generic words ("gesetzlich", "deutschland") retrieve
+ * confidently on topics the corpus does not cover.
+ * Assumption: 0.06 calibrated against the seed question set; see ASSUMPTIONS.md A12.
+ */
+export const MAX_DOCUMENT_FREQUENCY = 0.06;

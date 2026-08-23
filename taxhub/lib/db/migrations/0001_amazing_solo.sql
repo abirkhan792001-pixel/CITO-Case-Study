@@ -1,0 +1,2 @@
+ALTER TABLE "embeddings" ALTER COLUMN "embedding" DROP NOT NULL;--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "embeddings_content_de_idx" ON "embeddings" USING gin (to_tsvector('german', "content"));

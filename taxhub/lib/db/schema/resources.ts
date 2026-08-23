@@ -1,9 +1,10 @@
 import { sql } from "drizzle-orm";
-import { text, varchar, timestamp, pgTable, jsonb, boolean } from "drizzle-orm/pg-core";
+import { text, varchar, timestamp, pgTable, boolean } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 import { nanoid } from "@/lib/utils";
 import { provenanceSchema, type Provenance } from "./provenance";
+import { jsonbObject } from "./jsonb";
 
 /**
  * A `resource` is one whole source document: a statute section, a BMF-Schreiben,
@@ -17,7 +18,7 @@ export const resources = pgTable("resources", {
   content: text("content").notNull(),
 
   /** Document-level provenance. NOT NULL by design — no document without a source. */
-  provenance: jsonb("provenance").$type<Provenance>().notNull(),
+  provenance: jsonbObject<Provenance>("provenance").notNull(),
 
   /**
    * Denormalised copy of provenance.is_synthetic so "show me everything real"

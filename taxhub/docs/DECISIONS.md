@@ -330,3 +330,79 @@ spot-checking a rendered chunk against the raw XML, which is now a standing step
 
 **What would reverse it:** nothing. There is no case where reinterpreting statute
 text as a number is correct.
+
+---
+
+## ADR-013 — German full-text retrieval as the interim path (no embeddings key)
+**Date:** 2026-08-23 · **Status:** Accepted, INTERIM
+
+**Context:** no embeddings API key is available, and this environment cannot
+reach any model host (HuggingFace and jsDelivr are blocked by network policy;
+only the npm registry is reachable). Anthropic has no embeddings endpoint. So
+semantic retrieval, the intended design in ADR-003, cannot run at all.
+
+**Options considered**
+- **A.** Wait. Ship nothing until a key exists.
+- **B.** Fabricate vectors (hashing/TF-IDF) so pgvector "works". ← rejected
+- **C.** Postgres German full-text search as the retrieval path. ← chosen
+
+**Choice:** C. `RETRIEVAL_MODE=keyword` (the default) routes
+`findRelevantContent` to `searchByKeywords`; `RETRIEVAL_MODE=vector` restores the
+embedding path with no other change. `embeddings.embedding` became nullable.
+
+**Why not B:** a hashed vector would make pgvector light up green while ranking
+essentially at random. That is strictly worse than an honest null — it looks like
+semantic retrieval and behaves like noise, and it is exactly the class of
+comfortable-looking falsehood this project exists to refuse.
+
+**Why C works:** Postgres's `german` configuration does real German stemming
+("Werbungskosten" -> "werbungskost", "aufzubewahren" -> "aufbewahr"), which is
+what lets a practitioner's phrasing reach statute language. The refusal contract
+is unchanged: the same empty array, the same code-enforced refusal.
+
+**Two things had to be built on top, because Postgres text search lacks them:**
+1. **Document-frequency filtering.** A term appearing in more than
+   `MAX_DOCUMENT_FREQUENCY` of chunks is discarded. Without it, "Wie hoch ist der
+   gesetzliche Mindestlohn?" — whose one distinctive word appears **nowhere** in
+   the corpus — retrieved six statute sections on the strength of "gesetzlich"
+   (16.75% of chunks) and answered instead of refusing.
+2. **IDF weighting.** `ts_rank_cd` scores "deutschland" exactly as enthusiastically
+   as "kleinunternehmer". Score is now a sum of per-term ranks weighted by
+   `ln(N/(1+df))`. This moved EStG § 9, AO § 147 and the wiki from wrong or
+   mid-table to rank 1.
+
+**Measured on the seed set:** 4 of 5 correct; the out-of-corpus question refuses.
+The known miss is documented in ASSUMPTIONS.md A13.
+
+**What would reverse it:** an embeddings key. Set it, run
+`pnpm corpus:embed --replace`, set `RETRIEVAL_MODE=vector`. Nothing else changes.
+The better end state is hybrid — keyword and vector combined — which is what this
+work has actually built the first half of.
+
+---
+
+## ADR-014 — A jsonb column that stores objects, not JSON strings
+**Date:** 2026-08-23 · **Status:** Accepted
+
+**Context:** found while debugging a retrieval miss. `provenance ? 'paragraph'`
+returned **false** and `provenance->>'paragraph'` returned **null**, on rows whose
+provenance was demonstrably present and correct when read through the ORM.
+
+**Cause:** drizzle-orm's built-in `jsonb()` runs `JSON.stringify` in
+`mapToDriverValue`, and the postgres.js driver then encodes that string as a JSON
+value in its own right. The column ends up holding
+`"{\"paragraph\":\"§ 19\"}"` — a JSON *string* — instead of an object.
+
+**Choice:** a `customType` (`lib/db/schema/jsonb.ts`) that passes the object
+through untouched. postgres.js serialises it to jsonb correctly on its own.
+
+**Why it mattered more than it looked:** the ORM round-trip kept working
+perfectly, so nothing appeared broken — the app rendered correct citations
+throughout. Only SQL-level JSON access failed, silently returning nothing. Every
+`provenance`-based filter, aggregate or partial index would have matched zero
+rows while reporting success: "count chunks by statute" returns nothing, "show
+only non-synthetic sources" returns nothing, and each looks like an empty result
+rather than a bug.
+
+**What would reverse it:** drizzle fixing the double-encode upstream, at which
+point the custom type becomes redundant rather than wrong.

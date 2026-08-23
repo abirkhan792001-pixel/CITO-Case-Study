@@ -22,6 +22,8 @@ uncertainty over flattering ones.
 | A8 | `text-embedding-3-large` retrieves German statute language well enough at 1536 dimensions | Med | 🔴 | Multilingual by training; Matryoshka reduction 3072→1536 is documented as low-loss. Reduction is forced by pgvector's 2000-dim HNSW ceiling (ADR-003) | Recall on German legal phrasing disappoints in Phase 3 → switch to Cohere `embed-multilingual-v3.0` (one-line switch already prepared in `lib/ai/config.ts`) |
 | A9 | Paragraph-boundary chunking preserves citability for statutes | High | 🟢 | **VERIFIED in Phase 2.** The XML is structured by `<norm>` (one §) and `<P>` (one Absatz); 2,283 statute chunks were produced and every one carries a § identifier. Spot-checked against EStG § 9, UStG § 19, AO § 147 | Statute XML structure turns out irregular for a law we add later |
 | A10 | The corpus reflects **current** German tax law | **LOW** | 🔴 **KNOWN FALSE TODAY** | The mirror's last commit is 2025-04-02 and the XML build dates are Feb 2025, so the corpus is roughly 18 months stale as of 2026-08-23. Every chunk carries its true `stand` date and the UI displays it | Re-ingest from live gesetze-im-internet.de XML. **This must happen before any real-world use** — a confidently cited but repealed provision is exactly the failure this product exists to prevent |
+| A12 | `KEYWORD_THRESHOLD = 0.4` separates supported from unsupported questions | Med | 🟡 | **Calibrated on measured scores**, not chosen by feel: in-corpus answers score 0.41–0.78, the best out-of-corpus match scores 0.38. 0.4 sits in that gap — but the margin is only ~6%, which is thin | A question lands in the gap. The real fix is not retuning but semantic retrieval; lexical scores are inherently noisy here |
+| A13 | Keyword retrieval finds the right section for a practitioner's phrasing | **Med-Low** | 🔴 **ONE KNOWN MISS** | 4 of 5 seed questions correct. **"Wann ist ein Kleinunternehmer von der Umsatzsteuer *befreit*?" does not retrieve UStG § 19**, which says "ist *steuerfrei*". Different words, identical meaning — lexical matching cannot bridge it, and § 19a (also about Kleinunternehmer) outranks it. This is the textbook demonstration of why embeddings matter, kept in the eval rather than hidden | An embeddings key. The vector path is already wired; `RETRIEVAL_MODE=vector` switches it |
 | A11 | The synthetic wiki does not assert tax law | High | 🟢 | Deliberate: the 10 wiki documents describe firm **process** (onboarding, fristen, belegablage, honorar) and point at statutes rather than restating thresholds. Inventing a plausible-but-wrong threshold would be indistinguishable from a hallucination to a reader | A wiki doc is later written with substantive legal claims — then it needs the same sourcing discipline as a statute |
 
 ---
@@ -38,6 +40,10 @@ As of Phase 2 (corpus built, **not yet embedded** — see the gate report):
   `corpus/synthetic/`. Every file carries a "SIMULIERTER KANZLEI-INHALT — NICHT
   ECHT" header, every chunk carries `is_synthetic: true`, and the UI badges them
   SIMULIERT. The ingest pipeline **refuses** to ingest an unlabelled file.
+- **Retrieval:** currently **keyword mode** (Postgres German full-text search),
+  because no embeddings key is available and no model host is reachable from this
+  environment. Vectors are `NULL`; `pnpm corpus:embed --replace` plus
+  `RETRIEVAL_MODE=vector` switches to the intended semantic path. See ADR-013.
 - **Assumed:** everything in the table above.
 
 This section is updated at every phase gate.

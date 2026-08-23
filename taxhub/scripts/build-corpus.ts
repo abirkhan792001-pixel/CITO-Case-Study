@@ -150,6 +150,53 @@ const splitAbsaetze = (
   return blocks;
 };
 
+/**
+ * Split a block that is still too long after Absatz splitting.
+ *
+ * Some sections (EStG section 3 is the worst: 56k characters) are one enormous
+ * enumeration with no "(1)" Absatz markers at all, so the Absatz splitter leaves
+ * them whole. A 56k chunk is useless twice over: it drowns the ranking signal and
+ * it would swamp the answer context.
+ *
+ * Packs whole LINES up to the cap, and only if a single line exceeds the cap does
+ * it fall back to sentence boundaries. Never splits mid-sentence.
+ */
+const splitLongBlock = (text: string): string[] => {
+  if (text.length <= MAX_SINGLE_CHUNK) return [text];
+
+  const units: string[] = [];
+  for (const line of text.split("\n")) {
+    if (line.length <= MAX_SINGLE_CHUNK) {
+      units.push(line);
+      continue;
+    }
+    // Sentence boundary: a period/colon/semicolon followed by whitespace.
+    let buf = "";
+    for (const sentence of line.split(/(?<=[.:;])\s+/)) {
+      if (buf.length + sentence.length + 1 > MAX_SINGLE_CHUNK && buf.length > 0) {
+        units.push(buf);
+        buf = sentence;
+      } else {
+        buf = buf.length > 0 ? `${buf} ${sentence}` : sentence;
+      }
+    }
+    if (buf.length > 0) units.push(buf);
+  }
+
+  const pieces: string[] = [];
+  let current = "";
+  for (const unit of units) {
+    if (current.length + unit.length + 1 > MAX_SINGLE_CHUNK && current.length > 0) {
+      pieces.push(current);
+      current = unit;
+    } else {
+      current = current.length > 0 ? `${current}\n${unit}` : unit;
+    }
+  }
+  if (current.length > 0) pieces.push(current);
+  return pieces;
+};
+
 const buildStatute = (
   cfg: (typeof STATUTES)[number],
   commitSha: string,
@@ -216,10 +263,7 @@ const buildStatute = (
     const heading = titel ? `${enbez} ${titel}` : enbez;
     fullText.push(`${heading}\n${body}`);
 
-    const blocks = splitAbsaetze(body);
-    const shouldSplit = body.length > MAX_SINGLE_CHUNK && blocks.length > 1;
-
-    if (!shouldSplit) {
+    if (body.length <= MAX_SINGLE_CHUNK) {
       chunks.push({
         content: `${heading}\n\n${body}`,
         provenance: { ...base, paragraph: enbez, absatz: null, title: heading },
@@ -227,19 +271,26 @@ const buildStatute = (
       continue;
     }
 
-    for (const block of blocks) {
+    for (const block of splitAbsaetze(body)) {
       if (block.text.length < MIN_CHUNK_CHARS) continue;
       const label = block.absatz ? `${heading}, ${block.absatz}` : heading;
-      chunks.push({
-        // Heading repeated on every chunk so a retrieved fragment always
-        // announces which section it came from, even out of context.
-        content: `${heading}\n\n${block.text}`,
-        provenance: {
-          ...base,
-          paragraph: enbez,
-          absatz: block.absatz,
-          title: label,
-        },
+
+      // An Absatz can itself be far over the cap - split it too.
+      const pieces = splitLongBlock(block.text);
+      pieces.forEach((piece, idx) => {
+        if (piece.length < MIN_CHUNK_CHARS) return;
+        const part = pieces.length > 1 ? ` (Teil ${idx + 1}/${pieces.length})` : "";
+        chunks.push({
+          // Heading repeated on every chunk so a retrieved fragment always
+          // announces which section it came from, even out of context.
+          content: `${heading}\n\n${piece}`,
+          provenance: {
+            ...base,
+            paragraph: enbez,
+            absatz: block.absatz,
+            title: `${label}${part}`,
+          },
+        });
       });
     }
   }
